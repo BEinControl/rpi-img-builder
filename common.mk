@@ -4,12 +4,16 @@ RPI ?= 2
 DIST_ARCH ?= armhf
 ARCH ?= rpix
 UNAME ?= pi
-UPASS ?= raspberry
-RPASS ?= raspberry
+# PASSWORDS are SHA-512.  Use mkpasswd -m sha-512 to create
+# default password raspberry
+UPASS ?= $$6$$WEQXAgtSYlNQAV$$fQ0dTSMZQfc89q.kzJZ5AvuRl77rZAQn5RuaMCNdZcXjpmnbF6G4q4GMkRveB6m2YAqVuC9cS78JYZqwp/WLB1
+RPASS ?= $$6$$WEQXAgtSYlNQAV$$fQ0dTSMZQfc89q.kzJZ5AvuRl77rZAQn5RuaMCNdZcXjpmnbF6G4q4GMkRveB6m2YAqVuC9cS78JYZqwp/WLB1
 LOCALE ?= en_US.UTF-8
 IMAGE_MB ?= -1
 BOOT_MB ?= 128
 INC_REC ?= 0
+IMAGE_DIR ?= .
+PLUGINS_DIR ?=
 
 FDIST := stretch
 REPOBASE := Raspbian
@@ -72,15 +76,15 @@ else
 	ROOT_MB := $(shell expr $(IMAGE_MB) - $(BOOT_MB))
 endif
 
-TIMESTAMP := $(shell date +'%Y-%m-%dT%H:%M:%S')
+TIMESTAMP := $(shell date +%Y%m%d%H%M)
 ROOT_DEV := /dev/mmcblk0p2
 BASE_DIR := $(shell pwd)
 ROOTFS_DIR := $(BASE_DIR)/rootfs
-IMAGE_FILE := $(REPOBASE)-$(DIST)-$(ARCH)
+IMAGE_FILE := $(IMAGE_DIR)/$(REPOBASE)-$(DIST)-$(ARCH)
 
-ifeq ($(DIST),$(filter $(DIST), wheezy oldoldstable))
+ifeq ($(DIST),$(filter $(DIST), wheezy))
 	FDIST := wheezy
-else ifeq ($(DIST),$(filter $(DIST), jessie oldstable))
+else ifeq ($(DIST),$(filter $(DIST), jessie))
 	FDIST := jessie
 endif
 

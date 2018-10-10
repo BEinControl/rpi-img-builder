@@ -1,3 +1,6 @@
+ifdef OVERRIDES
+	include $(OVERRIDES)
+endif
 include common.mk
 
 .PHONY: all
@@ -26,7 +29,7 @@ delete-rootfs:
 		umount $(ROOTFS_DIR)/dev; \
 	fi
 	rm -rf $(wildcard $(ROOTFS_DIR) uInitrd)
-	
+
 .PHONY: build
 build: $(IMAGE_FILE)
 
@@ -37,24 +40,31 @@ $(ROOTFS_DIR).base:
 	fi
 	rm -f plugins.txt
 	for j in $(REPOS); do \
-		for i in plugins/$$j/*; do \
+		for i in plugins/REPO/$$j/*; do \
 			if [ -f $$i/baseonly -a $$j != $(REPOBASE) ]; then \
 				continue; \
 			fi; \
 			if [ -f $$i/packages -o -f $$i/preinst -o -f $$i/postinst -o -d $$i/files -o -d $$i/patches ]; then \
-				echo $$i >> plugins.txt; \
+				echo $$(realpath $$i) >> plugins.txt; \
 			fi; \
 		done; \
 	done
-	for i in plugins/$(DIST)/*; do \
+	for i in plugins/DIST/$(DIST)/*; do \
 		if [ -f $$i/packages -o -f $$i/preinst -o -f $$i/postinst -o -d $$i/files -o -d $$i/patches ]; then \
-			echo $$i >> plugins.txt; \
+			echo $$(realpath $$i) >> plugins.txt; \
 		fi; \
 	done
-	for i in plugins/*; do \
+	for i in plugins/COMMON/*; do \
 		if [ -f $$i/packages -o -f $$i/preinst -o -f $$i/postinst -o -d $$i/files -o -d $$i/patches ]; then \
-			echo $$i >> plugins.txt; \
+			echo $$(realpath $$i) >> plugins.txt; \
 		fi; \
+	done
+	for j in $(PLUGINS_DIR); do \
+		for i in $$j/*; do \
+			if [ -f $$i/packages -o -f $$i/preinst -o -f $$i/postinst -o -d $$i/files -o -d $$i/patches ]; then \
+				echo $$(realpath $$i) >> plugins.txt; \
+			fi; \
+		done; \
 	done
 	@echo
 	@echo "Building $(IMAGE_FILE)_$(TIMESTAMP).img"
@@ -63,7 +73,7 @@ $(ROOTFS_DIR).base:
 	@echo "Distribution: $(DIST)"
 	@echo "Repository architecture: $(DARCH)"
 	@echo "System architecture: $(ARCH)"
-	@echo "Plugins: $$(cat plugins.txt | xargs | sed -e 's;plugins/;;g' -e 's; ;, ;g')"
+	@echo "Plugins: $$(cat plugins.txt)"
 	@echo
 	@echo -n "5..."
 	@sleep 1
@@ -127,7 +137,7 @@ $(ROOTFS_DIR): $(ROOTFS_DIR).base
 		if [ -f $$i/preinst ]; then \
 			chmod +x $$i/preinst; \
 			echo " - found preinst ... running"; \
-			./$$i/preinst || exit 1; \
+			$$i/preinst || exit 1; \
 		fi; \
 		if [ -f $$i/postinst ]; then \
 			echo " - found postinst ... adding"; \
@@ -139,7 +149,7 @@ $(ROOTFS_DIR): $(ROOTFS_DIR).base
 	mount -o bind /proc $@/proc
 	mount -o bind /sys $@/sys
 	mount -o bind /dev $@/dev
-	chroot $@ /bin/bash -c "/postinstall $(DIST) $(ARCH) $(LOCALE) $(UNAME) $(UPASS) $(RPASS) $(INC_REC) $(UBOOT_DIR)"
+	chroot $@ /bin/bash -c "/postinstall $(DIST) $(ARCH) $(LOCALE) $(UNAME) '$(UPASS)' '$(RPASS)' $(INC_REC) $(UBOOT_DIR)"
 	for i in $$(cat plugins.txt | xargs); do \
 		if [ -d $$i/patches ]; then \
 			for j in $$i/patches/*; do \
@@ -147,6 +157,7 @@ $(ROOTFS_DIR): $(ROOTFS_DIR).base
 			done; \
 		fi; \
 	done
+#TODO: this is broken.  It will pull in hostname from disabled directory
 	if ls plugins/*/files/etc/hostname 1> /dev/null 2>&1; then \
 		cp plugins/*/files/etc/hostname $@/etc/hostname; \
 	fi
@@ -189,6 +200,6 @@ $(IMAGE_FILE): $(ROOTFS_DIR)
 	@echo "Distribution: $(DIST)"
 	@echo "Repository architecture: $(DARCH)"
 	@echo "System architecture: $(ARCH)"
-	@echo "Plugins: $$(cat plugins.txt | xargs | sed -e 's;plugins/;;g' -e 's; ;, ;g')"
+	@echo "Plugins: $$(cat plugins.txt)"
 	@echo
 	touch $@_$(TIMESTAMP).img

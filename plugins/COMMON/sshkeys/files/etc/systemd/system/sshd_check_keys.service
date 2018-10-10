@@ -4,13 +4,13 @@ Description=Check and regenerate SSH host keys
 DefaultDependencies=no
 Before=sshd.service
 ConditionPathExistsGlob=!/etc/ssh/ssh_host_*_key
-ConditionPathExistsGlob=!/var/tmp/system-*
+ConditionPathExistsGlob=!/var/tmp/system-resizefs
 
 [Service]
 Environment=TERM=linux
 Type=oneshot
 ExecStartPre=/usr/bin/ssh-keygen -A
-ExecStart=/bin/sleep 10
+ExecStart=/bin/sleep 5
 ExecStartPost=/usr/sbin/service sshd restart
 StandardError=syslog
 RemainAfterExit=no

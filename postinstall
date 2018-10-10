@@ -71,13 +71,13 @@ done
 cd - > /dev/null
 
 # Set root password
-echo "root:${RPASS}" | chpasswd
+echo "root:${RPASS}" | chpasswd -e
 
 # Add user $UNAME
 useradd -m ${UNAME} -s /bin/bash
 
 # Set $UNAME password
-echo "${UNAME}:${UPASS}" | chpasswd
+echo "${UNAME}:${UPASS}" | chpasswd -e
 
 # Add $UNAME to sudo group
 adduser ${UNAME} sudo || true

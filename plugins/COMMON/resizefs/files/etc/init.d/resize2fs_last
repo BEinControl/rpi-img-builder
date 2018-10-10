@@ -27,11 +27,8 @@ case "$1" in
 		rm -f /etc/init.d/resize2fs_last &&
 		rm -f /var/tmp/ROOT_RESIZE &&
 		rm -f /var/tmp/system-resizefs &&
-		log_end_msg $?
-
-		if [ -f /var/tmp/system-* ]; then
-			reboot
-		fi
+		log_end_msg $? &&
+		reboot
 	;;
 	*)
 		echo "Usage: $0 start" >&2
