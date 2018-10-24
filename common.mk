@@ -6,8 +6,8 @@ ARCH ?= rpix
 UNAME ?= pi
 # PASSWORDS are SHA-512.  Use mkpasswd -m sha-512 to create
 # default password raspberry
-UPASS ?= $$6$$WEQXAgtSYlNQAV$$fQ0dTSMZQfc89q.kzJZ5AvuRl77rZAQn5RuaMCNdZcXjpmnbF6G4q4GMkRveB6m2YAqVuC9cS78JYZqwp/WLB1
-RPASS ?= $$6$$WEQXAgtSYlNQAV$$fQ0dTSMZQfc89q.kzJZ5AvuRl77rZAQn5RuaMCNdZcXjpmnbF6G4q4GMkRveB6m2YAqVuC9cS78JYZqwp/WLB1
+UPASS ?= raspberry
+RPASS ?= raspberry
 LOCALE ?= en_US.UTF-8
 IMAGE_MB ?= -1
 BOOT_MB ?= 128
