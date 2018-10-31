@@ -1,0 +1,8 @@
+[Azul]
+packages=
+source=http://repos.azulsystems.com/debian
+keyring=
+components=main
+suite=stable
+omitdebsrc=true
+
