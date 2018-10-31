@@ -130,7 +130,8 @@ rm -f /usr/sbin/policy-rc.d
 
 # Cleanup
 echo "Running clean up"
-rm -f /etc/hostname
+# DFARRELL - Disabled removal of /etc/hostname as it prevents creation of static hostnames
+#rm -f /etc/hostname
 rm -f /etc/ssh/ssh_host_*
 apt-get autoclean
 apt-get clean
