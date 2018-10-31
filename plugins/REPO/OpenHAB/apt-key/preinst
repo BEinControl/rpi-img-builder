@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+
+wget https://bintray.com/user/downloadSubjectPublicKey?username=openhab -O rootfs/apt-keys/openhab-keyring.asc
+

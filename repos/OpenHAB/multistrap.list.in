@@ -1,0 +1,8 @@
+[OpenHAB]
+packages=
+source=http://dl.bintray.com/openhab/apt-repo2
+keyring=
+components=main
+suite=stable
+omitdebsrc=true
+
