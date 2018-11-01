@@ -130,6 +130,13 @@ else
 	echo "No custom ${DIST} postinst scripts found"
 fi
 
+# If hostname set, add to hosts
+if [ -f /etc/hostname ]; then
+	if ! grep "^127.0.0.1\s*$(cat /etc/hostname)\s*" /etc/hosts > /dev/null; then
+		sed -i "1i 127.0.0.1\\t$(cat /etc/hostname)" /etc/hosts;
+	fi;
+fi
+
 #DFARRELL : Should not be needed, but here in case I'm wrong
 # Finish timezone setup
 #dpkg-reconfigure --frontend noninteractive tzdata
