@@ -142,6 +142,7 @@ echo "Running clean up"
 # DFARRELL - Disabled removal of /etc/hostname as it prevents creation of static hostnames
 #rm -f /etc/hostname
 rm -f /etc/ssh/ssh_host_*
+rm -f /etc/apt/apt.conf.d/00rpi-img-builder
 apt-get autoclean
 apt-get clean
 dpkg --clear-avail
