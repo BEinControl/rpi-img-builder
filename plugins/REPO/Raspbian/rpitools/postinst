@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+UNAME="$1"
+
 sed -i -e 's,PATH="/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games",PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games",g' /etc/profile
+
+# Fix sudo nopasswd for target user
+#
+sed -Ei "s/^pi(\s)/${UNAME}\1/g" "/etc/sudoers.d/010_pi-nopasswd"
+mv "/etc/sudoers.d/010_pi-nopasswd" "/etc/sudoers.d/010_${UNAME}-nopasswd"
