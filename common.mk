@@ -9,6 +9,7 @@ UNAME ?= pi
 UPASS ?= raspberry
 RPASS ?= raspberry
 LOCALE ?= en_US.UTF-8
+TZONE ?= Etc/Universal
 IMAGE_MB ?= -1
 BOOT_MB ?= 128
 INC_REC ?= 0
