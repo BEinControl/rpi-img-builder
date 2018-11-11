@@ -15,6 +15,7 @@ BOOT_MB ?= 128
 INC_REC ?= 0
 IMAGE_DIR ?= .
 PLUGINS_DIR ?=
+PKG_CACHE_DIR ?=
 
 FDIST := stretch
 REPOBASE := Raspbian

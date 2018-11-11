@@ -61,19 +61,21 @@ echo "${TZONE}" > /etc/timezone
 
 # Finish multistrap
 /var/lib/dpkg/info/base-passwd.preinst install
-/var/lib/dpkg/info/dash.preinst install
+/var/lib/dpkg/info/dash.preinst        install
 dpkg --force-all --configure debconf 2>/dev/null || true
-dpkg --force-all --configure mawk 2>/dev/null || true
+dpkg --force-all --configure mawk    2>/dev/null || true
 dpkg --configure -a
 
 # Make sure all apt keys are installed
-cd /apt-keys > /dev/null
+echo "Installing apt keys"
+pushd /apt-keys > /dev/null
 for i in *.asc; do
 	if [ -f $i ]; then
-		apt-key --keyring /etc/apt/trusted.gpg.d/${i%.*}.gpg add ${i}
+		echo -n " - Adding apt key: '${i}' ... "
+		apt-key --keyring /etc/apt/trusted.gpg.d/${i%.*}.gpg add ${i} || echo "\n"
 	fi
 done
-cd - > /dev/null
+popd > /dev/null
 
 # Set root password
 echo "root:${RPASS}" | chpasswd
@@ -84,31 +86,49 @@ useradd -m ${UNAME} -s /bin/bash
 # Set $UNAME password
 echo "${UNAME}:${UPASS}" | chpasswd
 
-# Add $UNAME to sudo group
-adduser ${UNAME} sudo || true
+# Add $UNAME to groups
+adduser ${UNAME} sudo  || true
 adduser ${UNAME} audio || true
 adduser ${UNAME} video || true
 adduser ${UNAME} input || true
-adduser ${UNAME} tty || true
+adduser ${UNAME} tty   || true
 
 # Initialize /etc/apt/sources.list (remove multistrap from the filenames)
-for i in /etc/apt/sources.list.d/*; do
-	mv $i $(dirname $i)/$(echo $i | cut -d"-" -f2);
+# DFARRELL - Added 500-* prefix to help manage repo priority
+for i in /etc/apt/sources.list.d/multistrap-*; do
+	mv $i $(dirname $i)/500-$(echo $i | cut -d"-" -f2);
 done
 
+# DFARRELL -  Removed '--force-yes', added "--allow-unauthenticated"
+APT_INSTALL_OPTS="-y --allow-unauthenticated"
+if [ "$INC_REC" == "0" ]; then
+	APT_INSTALL_OPTS="$APT_INSTALL_OPTS --no-install-recommends"
+fi
+
+# Bring in package list from existing repos (needed here to install dpkg-dev)
 apt-get update
 
-APTOPTS="-y --assume-yes --force-yes"
-if [ "$INC_REC" == "0" ]; then
-	APTOPTS="$APTOPTS --no-install-recommends";
-fi
+# Setup local package-cache repos
+apt-get $APT_INSTALL_OPTS --no-install-recommends install dpkg-dev
+pushd /package-cache-plugins/ >/dev/null && ( dpkg-scanpackages . | gzip > Packages.gz ) && popd >/dev/null
+pushd /package-cache-common/  >/dev/null && ( dpkg-scanpackages . | gzip > Packages.gz ) && popd >/dev/null
+echo "deb [trusted=yes] file:/package-cache-plugins /" > /etc/apt/sources.list.d/000-rpi-img-builder-plugins.list
+echo "deb [trusted=yes] file:/package-cache-common /"  > /etc/apt/sources.list.d/001-rpi-img-builder-common.list
+apt-get update -o Dir::Etc::sourcelist=sources.list.d/000-rpi-img-builder-plugins.list -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+apt-get update -o Dir::Etc::sourcelist=sources.list.d/001-rpi-img-builder-common.list  -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+apt-get -y remove dpkg-dev
 
 # Install extra packages
 if [ -f /packages.txt ]; then
-	apt-get $APTOPTS install $(cat /packages.txt);
+	apt-get $APT_INSTALL_OPTS install $(cat /packages.txt);
 fi
 
-# Run custom install scripts
+# Copy plugin post-install files
+pushd /postinst-files >/dev/null
+find . -type f ! -name '*~' -exec cp --preserve=mode,timestamps --parents {} / \;
+popd >/dev/null
+
+# Run plugin post-install scripts
 if [ -d /postinst ]; then
 	echo "Running custom postinst scripts"
 	for i in `find /postinst -maxdepth 1 -type f -executable -not -name "*~" | sort`; do
@@ -119,7 +139,7 @@ else
 	echo "No custom postinst scripts found"
 fi
 
-# Run custom install scripts for a specific distribution
+# Run distribution post-install scripts
 if [ -d /postinst/${DIST} ]; then
 	echo "Running custom ${DIST} postinst scripts"
 	for i in `find /postinst/${DIST} -maxdepth 1 -type f -executable -not -name "*~"`; do
@@ -137,7 +157,7 @@ if [ -f /etc/hostname ]; then
 	fi;
 fi
 
-#DFARRELL : Should not be needed, but here in case I'm wrong
+# DFARRELL - Should not be needed, but here in case I'm wrong
 # Finish timezone setup
 #dpkg-reconfigure --frontend noninteractive tzdata
 
@@ -146,10 +166,30 @@ rm -f /usr/sbin/policy-rc.d
 
 # Cleanup
 echo "Running clean up"
-# DFARRELL - Disabled removal of /etc/hostname as it prevents creation of static hostnames
-#rm -f /etc/hostname
-rm -f /etc/ssh/ssh_host_*
-rm -f /etc/apt/apt.conf.d/00rpi-img-builder
-apt-get autoclean
+
+# DFARRELL - autoclean appears to be redundant when also doing clean
+#apt-get autoclean
+# DFARRELL - Added autoremove
+apt-get     \
+	-y      \
+	--purge \
+	-o APT::Autoremove::RecommendsImportant=0 \
+	-o APT::Autoremove::SuggestsImportant=0   \
+	autoremove
 apt-get clean
 dpkg --clear-avail
+
+# DFARRELL - Disabled removal of /etc/hostname as it prevents creation of static hostnames
+#rm -f /etc/hostname
+
+rm -f /etc/ssh/ssh_host_*
+
+rm -f /etc/apt/apt.conf.d/00rpi-img-builder
+rm -f /etc/apt/sources.list.d/*rpi-img-builder*.list
+
+# Clean /tmp/
+echo "Cleaning /tmp"
+RESET_DOTGLOB=$(shopt -p dotglob || true)
+shopt -s dotglob
+rm -rf /tmp/*
+$RESET_DOTGLOB
