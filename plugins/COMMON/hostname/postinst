@@ -16,7 +16,11 @@ if [ -f "/var/tmp/system-hostname.off" ]; then
 	#
 	rm "/var/tmp/system-hostname.off"
 else
-	# createhs script will run on first boot
+	# Reset hostname on first boot
 	#
 	touch /var/tmp/system-hostname
 fi
+
+# Update /etc/hosts on first boot
+#
+touch /var/tmp/system-hosts
