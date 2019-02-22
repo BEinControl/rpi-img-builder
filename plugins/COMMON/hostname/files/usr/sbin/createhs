@@ -3,38 +3,76 @@ PATH="/sbin:/bin:/usr/bin"
 
 PREFIX="raspberrypi"
 
-if [ -e /var/tmp/system-hostname ]; then
-	if [ -e /etc/hostname ]; then
-		rm -f /etc/hostname;
-	fi
+AUGTOOL="augtool -s --noload --include=/usr/share/createhs/augeas.d"
+AUGTOOL_TPL_HOSTNAME="/usr/share/createhs/augtool.d/set_etc_hostname.augtool.tpl"
+AUGTOOL_TPL_HOSTS="/usr/share/createhs/augtool.d/add_etc_hostname_to_etc_hosts.augtool.tpl"
+
+if [ ! -e /etc/hostname ]; then
+	touch /var/tmp/system-hostname
 fi
 
 if [ -f /etc/default/createhs ]; then
 	. /etc/default/createhs;
 fi
 
-if [ ! -e "/etc/hostname" ]; then
+if [ -e /var/tmp/system-hostname ]; then
 	hostname=""
+	# Compute hostname from mac address
+	#
 	address=( $(ls -1d /sys/class/net/e* /sys/class/net/wlan* 2>/dev/null || true) )
 	if [ ! -z ${address[0]} ]; then
 		mac=`cat ${address[0]}/address | sed s/://g`
 		if [ "$mac" != "" ]; then
-        		hostname="${PREFIX}-${mac}"
+			hostname="${PREFIX}-${mac}"
 		fi
 	fi
-	if [ "$hostname" = "" ]; then
-        	hostname="${PREFIX}-$(tr -cd 'a-f0-9' < /dev/urandom | head -c12)"
+	# If hostname still not set, punt to random
+	#
+	if [ "${hostname}" = "" ]; then
+		hostname="${PREFIX}-$(tr -cd 'a-f0-9' < /dev/urandom | head -c12)"
 	fi
-        echo "Creating /etc/hostname with $hostname"
-        echo "$hostname" > /etc/hostname
-        hostname "$hostname"
-        if ! grep "^127.0.0.1\s*$hostname\s*" /etc/hosts > /dev/null ; then
-            sed -i "1i 127.0.0.1\\t$hostname" /etc/hosts
-        fi
-	rm -f /var/tmp/system-hostname
+	# Did we end up with a hostname?
+	#
+	if [ "${hostname}" != "" ]; then
+		# Update configuration with new hostname
+		#
+		echo "Creating /etc/hostname with ${hostname}"
+		cat "${AUGTOOL_TPL_HOSTNAME}" | \
+		ETC_HOSTNAME="${hostname}"      \
+		envsubst '${ETC_HOSTNAME}'    | \
+		${AUGTOOL}
+		hostname "${hostname}"
+		# Enable update to /etc/hosts
+		#
+		touch /var/tmp/system-hosts
+		# Cleanup
+		#
+		rm -f /var/tmp/system-hostname
+	fi
+fi
 
-	if [ -e /disable-root-fs.wait ]; then
-		mv disable-root-fs.wait disable-root-fs
-		reboot
+# Update /ec/hosts from /etc/hostname?
+#
+if [ -e /var/tmp/system-hosts ]; then
+	# Do we have a hostname to set from:
+	#
+	if [ -e /etc/hostname ]; then
+		echo "Creating hostname entry in /etc/hosts"
+		# Configure and use augeas script to add hostname to /etc/hosts
+		#
+		cat "${AUGTOOL_TPL_HOSTS}"        | \
+		ETC_HOSTNAME=$(cat /etc/hostname)   \
+		envsubst '${ETC_HOSTNAME}'        | \
+		${AUGTOOL}
+		# Cleanup
+		#
+		rm -f /var/tmp/system-hosts
 	fi
+fi
+
+# If we're trying to start as read-only, enable and reboot
+#
+if [ -e /disable-root-fs.wait ]; then
+	mv disable-root-fs.wait disable-root-fs
+	reboot
 fi
